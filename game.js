@@ -1,4 +1,3 @@
-
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
@@ -447,7 +446,7 @@ function makeModelCar(st,ghost,MD){
 }
 function makeCar(st,ghost){
   if(MODELS[st.body]&&MODELS[st.body].tpl)return makeModelCar(st,ghost,MODELS[st.body]);
-  if(MODELS[st.body])loadModel(st.body);
+  if(MODELS[st.body]){loadModel(st.body);const g=new THREE.Group(),body=new THREE.Group();g.add(body);g.userData={body,wheels:[],fronts:[],spin:0,pvf:0,pitch:0,r:4.6,model:true,placeholder:true};return g}
   const C=CARS[st.body]||CARS.b5;
   const g=new THREE.Group(),body=new THREE.Group();g.add(body);body.position.y=C.lift;
   const gm=ghost?new THREE.MeshBasicMaterial({color:0x7a8087,transparent:true,opacity:.5,depthWrite:false}):null;
@@ -741,10 +740,12 @@ function buildShowroom(){
 }
 let PV=null;
 function showStyle(){if(!PV)return myStyle();const st=myStyle();const m={body:'body',rim:'rim',liv:'liv',wing:'wing',decal:'decal',lights:'lights'};if(PV.cat==='paint'){st.paintId=PV.id;st.paint=paintHex(PV.id)}else if(m[PV.cat])st[m[PV.cat]]=PV.id;return st}
-function setShowCar(){if(!SR.scene)return;const st=showStyle();const swap=screen==='garage'&&SR.car&&WS.lastBody&&WS.lastBody!==st.body&&SR.car.parent;
+function setShowCar(){if(!SR.scene)return;const st=showStyle();
+  if(MODELS[st.body]&&!MODELS[st.body].tpl&&SR.car&&!SR.car.userData.placeholder){loadModel(st.body);return}
+  const swap=screen==='garage'&&SR.car&&WS.lastBody&&WS.lastBody!==st.body;
   if(WS.old){if(WS.old.parent)WS.old.parent.remove(WS.old);disposeTree(WS.old);WS.old=null}
-  if(SR.car){if(swap){WS.old=SR.car;WS.sw=performance.now()}else{if(SR.car.parent)SR.car.parent.remove(SR.car);disposeTree(SR.car)}}
-  SR.car=makeCar(st,false);SR.scene.add(SR.car);WS.lastBody=st.body;if(!swap)WS.sw=0}
+  if(SR.car){if(SR.car.parent)SR.car.parent.remove(SR.car);disposeTree(SR.car)}
+  SR.car=makeCar(st,false);SR.scene.add(SR.car);WS.lastBody=st.body;WS.sw=swap?performance.now():0}
 function buildWorkshop(){
   const sc=new THREE.Scene();sc.background=new THREE.Color('#2b3036');
   sc.add(new THREE.HemisphereLight(0xffffff,0x4a4f55,.72));
@@ -803,11 +804,11 @@ function drawShowroom(dt,t){
   const narrow=VW<760;
   if(garage){
     const k=clamp((performance.now()-WS.t0)/950,0,1),e=1-Math.pow(1-k,3);
-    const Y0=.62,fx=Math.cos(Y0),fy=Math.sin(Y0);let off=0,spd=0;
-    if(WS.sw){const u=clamp((performance.now()-WS.sw)/700,0,1),ue=1-Math.pow(1-u,3);off=-(1-ue)*170;spd=(1-ue)*220;
-      if(WS.old){const v=clamp((performance.now()-WS.sw)/450,0,1),vo=v*v*230;if(WS.old.parent!==scene)scene.add(WS.old);poseCar(WS.old,fx*vo,fy*vo,6.7,Y0,120+v*200,0,0,dt);if(v>=1){scene.remove(WS.old);disposeTree(WS.old);WS.old=null}}
-      if(u>=1)WS.sw=0}
-    poseCar(SR.car,fx*off,fy*off,6.7,Y0+(1-e)*1.1,(1-e)*60+spd,0,0,dt);
+    const Y0=.62;let dy=0,pt=0;
+    if(WS.sw){const t=(performance.now()-WS.sw)/1000;if(t<.32){const u=t/.32;dy=14*(1-u*u)}else if(t<.56){const u=(t-.32)/.24;dy=2.2*Math.sin(Math.PI*u)}else WS.sw=0;
+      if(t>=.3&&t<.42)pt=-.04*Math.sin(Math.PI*(t-.3)/.12)}
+    poseCar(SR.car,0,0,6.7+dy,Y0+(1-e)*1.1,(1-e)*60,0,0,dt);if(pt)SR.car.userData.body.rotation.z+=pt;
+    if(WS.shd){const k2=1-Math.min(1,dy/14)*.5;WS.shd.scale.set(k2,k2,1);WS.shd.material.opacity=.45*k2}
     const dm=1+(1-e)*.45;camSet(46,8);cam3.position.set(-4*dm,(narrow?58:44)*dm,(narrow?140:112)*dm);cam3.lookAt(0,narrow?8:12,0);
     if(narrow)cam3.setViewOffset(VW,VH,0,VH*.13,VW,VH);else cam3.setViewOffset(VW,VH,0,VH*.03,VW,VH);
   }else{
