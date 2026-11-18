@@ -309,7 +309,7 @@ function buildTrack(def,gripMul){
   const gridNear=(x,y)=>{const cx=Math.floor(x/CELL),cy=Math.floor(y/CELL);let best=1e12,bi=0;for(let ix=-1;ix<=1;ix++)for(let iy=-1;iy<=1;iy++){const a=sg.get(key(cx+ix,cy+iy));if(!a)continue;for(const i of a){const dx=xs[i]-x,dy=ys[i]-y,d=dx*dx+dy*dy;if(d<best){best=d;bi=i}}}return {i:bi,d:Math.sqrt(best)}};
   T.surfAt=(x,y,hint)=>{const n=hint!=null?trackNear(T,x,y,hint):gridNear(x,y);const g=T.gh?T.gh(x,y):heightAt(x,y,farDist(x,y),hseed);
     if(n.d>=w/2+SK)return g;const i0=n.i,u=((x-xs[i0])*tx[i0]+(y-ys[i0])*ty[i0])/SP;let r=ry[i0];if(u>0&&i0<N-1)r+=(ry[i0+1]-r)*Math.min(1,u);else if(u<0&&i0>0)r+=(ry[i0-1]-r)*Math.min(1,-u);if(n.d<=w/2)return r;if(T.bridge&&T.bridge[i0]&&r>4)return g;const t=(n.d-w/2)/SK;return r+(g-r)*t*t*(3-2*t)};
-  let ai=aiTime(T);if(ai<0)ai=T.medals[1]*1.15;T.ai=ai;{let lt=-1;try{lt=lineTime(T)}catch(e){}T.lineT=lt;const id=T.ideal||0;if(lt>0&&lt<ai&&id>0){const g=lt-id;const D=Math.min(id,lt),P=Math.max(D*1.03,(D+lt)/2),G=Math.max(D*1.08,lt*1.03);T.medals=[Math.ceil(D*10)/10,...[P,G,G*1.12,G*1.3].map(v=>Math.round(v*10)/10)];for(let k=1;k<5;k++)if(T.medals[k]<=T.medals[k-1])T.medals[k]=Math.round(T.medals[k-1]*10+1)/10}else T.medals=[.72,.76,.84,.96,1.12].map(f=>Math.round(ai*f*10)/10)}
+  let ai=aiTime(T);if(ai<0)ai=T.medals[1]*1.15;T.ai=ai;{let lt=-1;try{lt=lineTime(T)}catch(e){}T.lineT=lt;const id=T.ideal||0;if(lt>0&&lt<ai){const g=lt-id;T.medals=[.95,.97,1,1.12,1.3].map(f=>Math.round(lt*f*10)/10);for(let k=1;k<5;k++)if(T.medals[k]<=T.medals[k-1])T.medals[k]=Math.round(T.medals[k-1]*10+1)/10}else T.medals=[.675,.69,.71,.8,.92].map(f=>Math.round(ai*f*10)/10)}
   return T;
 }
 /* Best clean time: a bot follows the tightest line that stays on the road and brakes just in time. Medals are set from it. */
@@ -319,11 +319,17 @@ function lineTime(T){const N=T.N,o=new Float32Array(N),lim=T.w/2-14;
   const X=new Float32Array(N),Y=new Float32Array(N),rad=new Float32Array(N);for(let i=0;i<N;i++){X[i]=T.xs[i]-T.ty[i]*o[i];Y[i]=T.ys[i]+T.tx[i]*o[i]}
   for(let i=0;i<N;i++){const a=Math.max(0,i-4),b=Math.min(N-1,i+4);const ax=X[i]-X[a],ay=Y[i]-Y[a],bx=X[b]-X[i],by=Y[b]-Y[i],cr=Math.abs(ax*by-ay*bx);rad[i]=cr<1e-6?1e5:Math.hypot(ax,ay)*Math.hypot(bx,by)*Math.hypot(X[b]-X[a],Y[b]-Y[a])/(2*cr)}
   let best=-1;T.lineRun=null;
-  for(const [C,br] of [[1400,.6],[2800,1.6],[2000,.6]]){const c={x:T.xs[3],y:T.ys[3],a:T.ang[3],vx:0,vy:0,av:0,idx:3,vf:0,vr:0,surf:0,bot:true};let t=0,mi=3,mt=0,ok=false,tk=0;const rec=[Math.round(c.x),Math.round(c.y),Math.round(c.a*100),0];
-    while(t<300&&(best<0||t<best)){if(c.idx>mi){mi=c.idx;mt=t}else if(t-mt>8)break;const L=Math.min(N-1,c.idx+12);const err=angD(Math.atan2(Y[L]-c.y,X[L]-c.x),c.a);
-      let vt=700;for(let k=c.idx,e=Math.min(N,c.idx+60);k<e;k++){const v=Math.sqrt(C*rad[k])+(k-c.idx)*SP*br;if(v<vt)vt=v}
+  const radOf=(X,Y)=>{const r=new Float32Array(N);for(let i=0;i<N;i++){const a=Math.max(0,i-4),b=Math.min(N-1,i+4);const ax=X[i]-X[a],ay=Y[i]-Y[a],bx=X[b]-X[i],by=Y[b]-Y[i],cr=Math.abs(ax*by-ay*bx);r[i]=cr<1e-6?1e5:Math.hypot(ax,ay)*Math.hypot(bx,by)*Math.hypot(X[b]-X[a],Y[b]-Y[a])/(2*cr)}return r};
+  const drive=(X,Y,rad,C,look,br)=>{const c={x:T.xs[3],y:T.ys[3],a:T.ang[3],vx:0,vy:0,av:0,idx:3,vf:0,vr:0,surf:0,bot:true};let t=0,mi=3,mt=0,ok=false,tk=0;const rec=[Math.round(c.x),Math.round(c.y),Math.round(c.a*100),0];
+    while(t<300&&(best<0||t<best)){if(c.idx>mi){mi=c.idx;mt=t}else if(t-mt>8)break;const L=Math.min(N-1,c.idx+look);const err=angD(Math.atan2(Y[L]-c.y,X[L]-c.x),c.a);
+      let vt=900;for(let k=c.idx,e=Math.min(N,c.idx+60);k<e;k++){const v=Math.sqrt(C*rad[k])+(k-c.idx)*SP*br;if(v<vt)vt=v}
       stepCar(c,{up:c.vf<vt,down:c.vf>vt+30,hb:false,steer:clamp(err*3-c.av*.25,-1,1)},STEP,T);t+=STEP;if(++tk>=4){tk=0;rec.push(Math.round(c.x),Math.round(c.y),Math.round(c.a*100),Math.round((c.z||0)*10))}if(c.offd>T.w/2+20||c.cut)break;if(c.idx>=N-7){ok=true;break}}
-    if(ok&&(best<0||t<best)){best=t;T.lineRun={t,f:rec}}}
+    if(ok&&(best<0||t<best)){best=t;T.lineRun={t,f:rec}}};
+  for(const [C,br] of [[1400,.6],[2800,1.6],[2000,.6]])drive(X,Y,rad,C,12,br);
+  // a second, braver driver on the shortest line: flat out wherever possible, sliding through corners
+  for(const mgn of [6,10]){const q=new Float32Array(N),lm=T.w/2-mgn;for(const K of [24,16,10,6,3,1])for(let it=0;it<150;it++)for(let i=K;i<N-K;i++){const a=i-K,b=i+K;const px=(T.xs[a]-T.ty[a]*q[a]+T.xs[b]-T.ty[b]*q[b])/2,py=(T.ys[a]+T.tx[a]*q[a]+T.ys[b]+T.tx[b]*q[b])/2;q[i]=clamp((px-T.xs[i])*-T.ty[i]+(py-T.ys[i])*T.tx[i],-lm,lm)}
+   const X2=new Float32Array(N),Y2=new Float32Array(N);for(let i=0;i<N;i++){X2[i]=T.xs[i]-T.ty[i]*q[i];Y2[i]=T.ys[i]+T.tx[i]*q[i]}const r2=radOf(X2,Y2);
+   for(const [C,lk,br] of (mgn===6?[[6000,20,1],[12000,20,1],[3000,20,4]]:[[6000,20,1]]))drive(X2,Y2,r2,C,lk,br)}
   // theoretical best: flat out along the shortest path that stays on the road (corners ignored)
   {const q=new Float32Array(N),lm=T.w/2-10;for(const K of [24,16,10,6,3,1])for(let it=0;it<120;it++)for(let i=K;i<N-K;i++){const a=i-K,b=i+K;const px=(T.xs[a]-T.ty[a]*q[a]+T.xs[b]-T.ty[b]*q[b])/2,py=(T.ys[a]+T.tx[a]*q[a]+T.ys[b]+T.tx[b]*q[b])/2;q[i]=clamp((px-T.xs[i])*-T.ty[i]+(py-T.ys[i])*T.tx[i],-lm,lm)}
    let L=0;for(let i=4;i<=N-7;i++)L+=Math.hypot(T.xs[i]-T.ty[i]*q[i]-(T.xs[i-1]-T.ty[i-1]*q[i-1]),T.ys[i]+T.tx[i]*q[i]-(T.ys[i-1]+T.tx[i-1]*q[i-1]));
