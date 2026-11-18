@@ -309,7 +309,7 @@ function buildTrack(def,gripMul){
   const gridNear=(x,y)=>{const cx=Math.floor(x/CELL),cy=Math.floor(y/CELL);let best=1e12,bi=0;for(let ix=-1;ix<=1;ix++)for(let iy=-1;iy<=1;iy++){const a=sg.get(key(cx+ix,cy+iy));if(!a)continue;for(const i of a){const dx=xs[i]-x,dy=ys[i]-y,d=dx*dx+dy*dy;if(d<best){best=d;bi=i}}}return {i:bi,d:Math.sqrt(best)}};
   T.surfAt=(x,y,hint)=>{const n=hint!=null?trackNear(T,x,y,hint):gridNear(x,y);const g=T.gh?T.gh(x,y):heightAt(x,y,farDist(x,y),hseed);
     if(n.d>=w/2+SK)return g;const i0=n.i,u=((x-xs[i0])*tx[i0]+(y-ys[i0])*ty[i0])/SP;let r=ry[i0];if(u>0&&i0<N-1)r+=(ry[i0+1]-r)*Math.min(1,u);else if(u<0&&i0>0)r+=(ry[i0-1]-r)*Math.min(1,-u);if(n.d<=w/2)return r;if(T.bridge&&T.bridge[i0]&&r>4)return g;const t=(n.d-w/2)/SK;return r+(g-r)*t*t*(3-2*t)};
-  let ai=aiTime(T);if(ai<0)ai=T.medals[1]*1.15;T.ai=ai;{let lt=-1;try{lt=lineTime(T)}catch(e){}T.lineT=lt;const id=T.ideal||0;if(lt>0&&lt<ai){const g=lt-id;T.medals=[.95,.97,1,1.12,1.3].map(f=>Math.round(lt*f*10)/10);for(let k=1;k<5;k++)if(T.medals[k]<=T.medals[k-1])T.medals[k]=Math.round(T.medals[k-1]*10+1)/10}else T.medals=[.675,.69,.71,.8,.92].map(f=>Math.round(ai*f*10)/10)}
+  let ai=aiTime(T);if(ai<0)ai=T.medals[1]*1.15;T.ai=ai;{let lt=-1;try{lt=lineTime(T)}catch(e){}T.lineT=lt;const id=T.ideal||0;if(lt>0&&lt<ai){const g=lt-id;T.medals=[.93,.97,1,1.12,1.3].map(f=>Math.round(lt*f*10)/10);for(let k=1;k<5;k++)if(T.medals[k]<=T.medals[k-1])T.medals[k]=Math.round(T.medals[k-1]*10+1)/10}else T.medals=[.66,.69,.71,.8,.92].map(f=>Math.round(ai*f*10)/10)}
   return T;
 }
 /* Best clean time: a bot follows the tightest line that stays on the road and brakes just in time. Medals are set from it. */
@@ -325,7 +325,7 @@ function lineTime(T){const N=T.N,o=new Float32Array(N),lim=T.w/2-14;
       let vt=900;for(let k=c.idx,e=Math.min(N,c.idx+60);k<e;k++){const v=Math.sqrt(C*rad[k])+(k-c.idx)*SP*br;if(v<vt)vt=v}
       stepCar(c,{up:c.vf<vt,down:c.vf>vt+30,hb:false,steer:clamp(err*3-c.av*.25,-1,1)},STEP,T);t+=STEP;if(++tk>=4){tk=0;rec.push(Math.round(c.x),Math.round(c.y),Math.round(c.a*100),Math.round((c.z||0)*10))}if(c.offd>T.w/2+20||c.cut)break;if(c.idx>=N-7){ok=true;break}}
     if(ok&&(best<0||t<best)){best=t;T.lineRun={t,f:rec}}};
-  for(const [C,br] of [[1400,.6],[2800,1.6],[2000,.6]])drive(X,Y,rad,C,12,br);
+  for(const [C,br] of [[1400,.6],[2800,1.6],[2000,.6],[650,.6]])drive(X,Y,rad,C,12,br);
   // a second, braver driver on the shortest line: flat out wherever possible, sliding through corners
   for(const mgn of [6,10]){const q=new Float32Array(N),lm=T.w/2-mgn;for(const K of [24,16,10,6,3,1])for(let it=0;it<150;it++)for(let i=K;i<N-K;i++){const a=i-K,b=i+K;const px=(T.xs[a]-T.ty[a]*q[a]+T.xs[b]-T.ty[b]*q[b])/2,py=(T.ys[a]+T.tx[a]*q[a]+T.ys[b]+T.tx[b]*q[b])/2;q[i]=clamp((px-T.xs[i])*-T.ty[i]+(py-T.ys[i])*T.tx[i],-lm,lm)}
    const X2=new Float32Array(N),Y2=new Float32Array(N);for(let i=0;i<N;i++){X2[i]=T.xs[i]-T.ty[i]*q[i];Y2[i]=T.ys[i]+T.tx[i]*q[i]}const r2=radOf(X2,Y2);
@@ -1118,10 +1118,10 @@ function effects(c){
   const slide=Math.abs(c.vr)>50||(K.hb&&sp>50&&R.state==='run');
   const wheels=[[c.x-fx*11+fy*8.6,c.y-fy*11-fx*8.6],[c.x-fx*11-fy*8.6,c.y-fy*11+fx*8.6]];
   if(++c.mk>=3){c.mk=0;if(c.pw&&(slide||(c.surf===2&&sp>60))){for(let k=0;k<2;k++)addSkid(c.pw[k][0],c.pw[k][1],wheels[k][0],wheels[k][1],c.z)}c.pw=wheels}
-  const p=(sp/MAXV)*.3+(slide?.5:0)+(c.surf===2&&sp>40?.25:0);
+  const p=((sp/MAXV)*.3+(slide?.5:0)+(c.surf===2&&sp>40?.25:0))*(S.opt.dustMin?.2:1);
   if(Math.random()<p){const w=wheels[Math.random()<.5?0:1];spawnDust(w[0],w[1],-c.vx*.12+(Math.random()-.5)*50,-c.vy*.12+(Math.random()-.5)*50,dustColor(S.eq.dust,R.T.B),false,c.z)}
   const drift=sp>45&&(Math.abs(c.vr)>40||(K.hb&&R.state==='run'));
-  if(drift&&Math.random()<.75){const w=wheels[Math.random()<.5?0:1];const dc=S.eq.dust==='d0'?[232,232,228]:dustColor(S.eq.dust,R.T.B);
+  if(drift&&Math.random()<(S.opt.dustMin?.12:.75)){const w=wheels[Math.random()<.5?0:1];const dc=S.eq.dust==='d0'?[232,232,228]:dustColor(S.eq.dust,R.T.B);
     spawnDust(w[0]-fx*4,w[1]-fy*4,-c.vx*.06+(Math.random()-.5)*30,-c.vy*.06+(Math.random()-.5)*30,dc,true,c.z)}
 }
 function pfInfo(T){if(T.pf)return T.pf;const N=T.N,ex=T.xs[N-1],ey=T.ys[N-1],a0=Math.atan2(T.ty[N-1],T.tx[N-1]),L=330,Wd=T.w+60;
@@ -1213,7 +1213,10 @@ function drawRace(dt){
     const tgt=under?.3:1;T.bridgeMat.opacity+=(tgt-T.bridgeMat.opacity)*Math.min(1,dt*8)}
   if(W.ghost&&R.ghost&&R.ghost.f&&R.ghost.f.length>=4){const f=R.ghost.f,nf=f.length/4;const tt=R.state==='count'?0:R.t*30;const i0=Math.min(nf-1,Math.floor(tt)),i1=Math.min(nf-1,i0+1),u=clamp(tt-i0,0,1);
     const gx=f[i0*4]+(f[i1*4]-f[i0*4])*u,gy=f[i0*4+1]+(f[i1*4+1]-f[i0*4+1])*u,ga=f[i0*4+2]/100+angD(f[i1*4+2]/100,f[i0*4+2]/100)*u,gz=(f[i0*4+3]+(f[i1*4+3]-f[i0*4+3])*u)/10;
-    W.ghost.position.set(gx,gz,gy);W.ghost.rotation.y=-ga}
+    W.ghost.position.set(gx,gz,gy);W.ghost.rotation.y=-ga;
+    // fade: almost invisible right next to you, back to a soft grey further away
+    const gu=W.ghost.userData;if(!gu.gms){gu.gms=new Set();W.ghost.traverse(o=>{if(o.material&&!Array.isArray(o.material)&&o.material.transparent)gu.gms.add(o.material)})}
+    const gd=Math.hypot(gx-c.x,gy-c.y),op=gd<=35?.06:gd>=170?.5:.06+(gd-35)/135*.44;for(const m of gu.gms)m.opacity=op;W.ghost.visible=op>.02}
   if(R.kind==='mp'&&MP.room){const seen=new Set();
     for(const p of MP.room.peers()){if(p.sameTab)continue;const pr=p.presence||{};if(pr.rd!==MP.curGo||typeof pr.x!=='number')continue;seen.add(p.peer);
       let d=W.peers.get(p.peer);const sk=[pr.pt,pr.lv,pr.wg,pr.dc,pr.lt,pr.bd,pr.rm].join('|');
@@ -1226,7 +1229,7 @@ function drawRace(dt){
       const psp=Math.hypot(d.x-ox,d.y-oy)/Math.max(dt,.001);{const gq=groundPose(T,d.x,d.y,d.a,d.hi!=null?d.hi:(d.hi=trackNear(T,d.x,d.y,clamp(+pr.pg||3,0,T.N-1)).i));d.hi=trackNear(T,d.x,d.y,d.hi).i;const ka=1-Math.exp(-10*dt),inAir=d.z>gq.h+3;d.tp=(d.tp||0)+((inAir?0:gq.p)-(d.tp||0))*ka;d.tr=(d.tr||0)+((inAir?0:gq.r)-(d.tr||0))*ka;
         const vlat=-(d.vx||0)*Math.sin(d.a)+(d.vy||0)*Math.cos(d.a);poseCar(d.g,d.x,d.y,Math.max(d.z,inAir?d.z:gq.h),d.a,psp,vlat,0,dt,d.tp,d.tr,(px,py)=>T.surfAt(px,py,d.hi),inAir)}
       if(S.opt.odust&&S.opt.dust&&psp>110&&!d.fin){const slip=Math.abs(angD(Math.atan2(d.vy||0,d.vx||0),d.a));d.dacc=(d.dacc||0)+dt*(3+(slip>.22?11:0));
-        while(d.dacc>=1){d.dacc-=1;const bx=d.x-Math.cos(d.a)*15+(Math.random()-.5)*8,by=d.y-Math.sin(d.a)*15+(Math.random()-.5)*8;spawnDust(bx,by,-(d.vx||0)*.15,-(d.vy||0)*.15,T.B.dust,slip>.22,d.z)}}}
+        while(d.dacc>=1){d.dacc-=1;const bx=d.x-Math.cos(d.a)*15+(Math.random()-.5)*8,by=d.y-Math.sin(d.a)*15+(Math.random()-.5)*8;spawnDust(bx,by,-(d.vx||0)*.15,-(d.vy||0)*.15,T.B.dust,slip>.22&&!S.opt.dustMin,d.z)}}}
     for(const [k,d] of W.peers)if(!seen.has(k)){W.scene.remove(d.g);disposeTree(d.g);W.peers.delete(k)}}
   const s=VH>VW?1.45:1;
   if(!W.camInit){W.camH=c.h;W.camInit=true}W.camH+=(c.h-W.camH)*Math.min(1,dt*3);
@@ -1241,7 +1244,7 @@ function drawRace(dt){
   octx.clearRect(0,0,VW,VH);octx.lineJoin='round';
   octx.font='800 13px Nunito, sans-serif';octx.textAlign='center';
   const label=(x,y,z,txt,col)=>{if(S.opt.view!=='above'&&!R.camLock&&W.gh){const cx=cam3.position.x,cy=cam3.position.z,cz=cam3.position.y;for(let i=1;i<12;i++){const f=i/12;if(W.gh(cx+(x-cx)*f,cy+(z-cy)*f)>cz+(y-cz)*f+1)return}}v3.set(x,y,z).project(cam3);if(v3.z>1)return;const sx=(v3.x+1)/2*VW,sy=(1-v3.y)/2*VH;octx.lineWidth=4;octx.strokeStyle='rgba(35,40,44,.85)';octx.strokeText(txt,sx,sy);octx.fillStyle=col||'#fff';octx.fillText(txt,sx,sy)};
-  if(W.ghost)label(W.ghost.position.x,W.ghost.position.y+26,W.ghost.position.z,DEV()&&R.ghost===R.T.lineRun?'BOT LINE':S.ghostMode==='last'?'LAST RUN':'BEST RUN');
+  if(W.ghost&&DEV()&&R.ghost===R.T.lineRun)label(W.ghost.position.x,W.ghost.position.y+26,W.ghost.position.z,'BOT LINE');
   for(const d of W.peers.values())label(d.x,26,d.y,d.name,d.col);
   if(R.kind==='mp'&&MP.room&&R.state!=='count'){let ahead=0,n=1;for(const p of MP.room.peers()){if(p.sameTab)continue;const pr=p.presence||{};if(pr.rd!==MP.curGo)continue;n++;
       if(R.state==='done'){if(pr.st==='fin'&&(+pr.ft||0)<Math.round(R.ft*1000))ahead++}else if(pr.st==='fin'||(+pr.pg||0)>c.idx)ahead++}
@@ -1618,7 +1621,7 @@ const SCREENS={
     return `<div class="scr dim"><div class="wrap">${topBar('menu')}
       <h2 class="chunk">SETTINGS</h2>
       <div class="card tilt">
-        ${row('Dust & smoke','Dust puffs behind the wheels and drift smoke.',seg('dust',[['1','On'],['0','Off']],S.opt.dust?'1':'0'))}
+        ${row('Dust & smoke','Dust puffs behind the wheels and drift smoke. Minimal keeps just a light trail.',seg('dust',[['1','Full'],['m','Minimal'],['0','Off']],!S.opt.dust?'0':S.opt.dustMin?'m':'1'))}
         ${row('Ghost car','Which run the grey ghost car replays.',seg('ghost',[['best','Best'],['last','Last'],['off','Off']],S.ghostMode))}
         ${row('Skid marks','Tyre marks left on the road while sliding.',seg('skid',[['1','On'],['0','Off']],S.opt.skid?'1':'0'))}
         ${row('Graphics','Lower it if the game stutters on your device.',`<div class="seg">${[['l','Low'],['m','Medium'],['h','High']].map(([v,n])=>`<button class="${S.opt.gfx===v?'on':''}" data-act="gfx" data-v="${v}">${n}</button>`).join('')}</div>`)}
@@ -1727,7 +1730,7 @@ UI.addEventListener('click',e=>{
     case 'kb-reset':for(const a in DEFAULT_KEYS)S.keys[a]=DEFAULT_KEYS[a].slice();KB.wait=null;save();buildKeymap();renderScreen();break;
     case 'sens':S.opt.sens=b.dataset.v;save();renderScreen();break;
     case 'gfx':S.opt.gfx=b.dataset.v;save();applyGfx();if(W){setWorld(null);W=null}renderScreen();break;
-    case 'opt':{const k=b.dataset.k,v=b.dataset.v;if(k==='ghost')S.ghostMode=v;else if(k==='sound'){S.mute=v==='0';if(S.mute&&eng){try{eng.g.gain.value=0}catch(_){}}}else S.opt[k]=v==='1';save();renderScreen();break}
+    case 'opt':{const k=b.dataset.k,v=b.dataset.v;if(k==='ghost')S.ghostMode=v;else if(k==='sound'){S.mute=v==='0';if(S.mute&&eng){try{eng.g.gain.value=0}catch(_){}}}else if(k==='dust'){S.opt.dust=v!=='0';S.opt.dustMin=v==='m'}else S.opt[k]=v==='1';save();renderScreen();break}
     case 'story-play':startRace({def:storyDef(i),kind:'story',idx:i,title:'SS'+(i+1)+' · '+STORY[i][0],back:'story'});break;
     case 'daily-play':{const di=dailyInfo();startRace({def:di.def,kind:'daily',gripMul:di.mod.g,title:'Daily challenge · '+di.mod.n,back:'daily'});break}
     case 'pause':case 'resume':togglePause();break;
