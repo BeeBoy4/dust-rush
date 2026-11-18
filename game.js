@@ -100,7 +100,8 @@ const TIER=['Finished','Bronze','Silver','Gold','Platinum','Diamond'];
 const TIERC=['#6b7378','#c07b3f','#aeb5ba','#e3ad25','#46b9c2','#9b6cf2'];
 const STORY_REWARD=[10,30,65,125,215,330];
 const DAILY_REWARD=[25,60,110,180,260,380];
-function tierOf(t,m){for(let k=0;k<m.length;k++)if(t<=m[k])return m.length-k;return 0}
+function reached(t,m){return Math.round(t*1000)<=Math.round(m*1000)}
+function tierOf(t,m){for(let k=0;k<m.length;k++)if(reached(t,m[k]))return m.length-k;return 0}
 
 /* ---------------- track generation ---------------- */
 const SP=10;
@@ -309,7 +310,7 @@ function buildTrack(def,gripMul){
   const gridNear=(x,y)=>{const cx=Math.floor(x/CELL),cy=Math.floor(y/CELL);let best=1e12,bi=0;for(let ix=-1;ix<=1;ix++)for(let iy=-1;iy<=1;iy++){const a=sg.get(key(cx+ix,cy+iy));if(!a)continue;for(const i of a){const dx=xs[i]-x,dy=ys[i]-y,d=dx*dx+dy*dy;if(d<best){best=d;bi=i}}}return {i:bi,d:Math.sqrt(best)}};
   T.surfAt=(x,y,hint)=>{const n=hint!=null?trackNear(T,x,y,hint):gridNear(x,y);const g=T.gh?T.gh(x,y):heightAt(x,y,farDist(x,y),hseed);
     if(n.d>=w/2+SK)return g;const i0=n.i,u=((x-xs[i0])*tx[i0]+(y-ys[i0])*ty[i0])/SP;let r=ry[i0];if(u>0&&i0<N-1)r+=(ry[i0+1]-r)*Math.min(1,u);else if(u<0&&i0>0)r+=(ry[i0-1]-r)*Math.min(1,-u);if(n.d<=w/2)return r;if(T.bridge&&T.bridge[i0]&&r>4)return g;const t=(n.d-w/2)/SK;return r+(g-r)*t*t*(3-2*t)};
-  let ai=aiTime(T);if(ai<0)ai=T.medals[1]*1.15;T.ai=ai;{let lt=-1;try{lt=lineTime(T)}catch(e){}T.lineT=lt;const id=T.ideal||0;if(lt>0&&lt<ai){const g=lt-id;T.medals=[.93,.97,1,1.12,1.3].map(f=>Math.round(lt*f*10)/10);for(let k=1;k<5;k++)if(T.medals[k]<=T.medals[k-1])T.medals[k]=Math.round(T.medals[k-1]*10+1)/10}else T.medals=[.66,.69,.71,.8,.92].map(f=>Math.round(ai*f*10)/10)}
+  let ai=aiTime(T);if(ai<0)ai=T.medals[1]*1.15;T.ai=ai;{let lt=-1;try{lt=lineTime(T)}catch(e){}T.lineT=lt;const id=T.ideal||0;if(lt>0&&lt<ai){const g=lt-id;T.medals=[.94,.97,1,1.12,1.3].map(f=>Math.round(lt*f*10)/10);for(let k=1;k<5;k++)if(T.medals[k]<=T.medals[k-1])T.medals[k]=Math.round(T.medals[k-1]*10+1)/10}else T.medals=[.66,.69,.71,.8,.92].map(f=>Math.round(ai*f*10)/10)}
   return T;
 }
 /* Best clean time: a bot follows the tightest line that stays on the road and brakes just in time. Medals are set from it. */
@@ -1355,7 +1356,7 @@ function showResults(){
   if(!hudEls)return;const res=R.result,T=R.T;
   if(R.kind==='mp'){renderMpResults();return}
   const m=T.medals;const names=m.map((_,k)=>TIER[m.length-k]);const cols=m.map((_,k)=>TIERC[m.length-k]);
-  const rows=m.map((t,k)=>`<span class="dot" style="background:${cols[k]}"></span><span>${names[k]}</span><span class="tm" style="${res.t<=t?'color:var(--ok)':''}">${res.t<=t?'✓ ':''}${fmt(t)}</span>`).join('');
+  const rows=m.map((t,k)=>`<span class="dot" style="background:${cols[k]}"></span><span>${names[k]}</span><span class="tm" style="${reached(res.t,t)?'color:var(--ok)':''}">${reached(res.t,t)?'✓ ':''}${fmt(t)}</span>`).join('');
   let delta='';if(res.prevBest!=null){const d=res.t-res.prevBest;delta=`<span style="font-family:var(--mono);color:${d>0?'var(--bad)':'var(--ok)'}">${d>0?'+':'−'}${Math.abs(d).toFixed(2)}</span> vs your previous best`}
   const nextOk=R.kind==='story'&&R.idx<STORY.length-1;
   hudEls.ov.innerHTML=`<div class="ov"><div class="card res tilt">
