@@ -310,11 +310,14 @@ function buildTrack(def,gripMul){
   const gridNear=(x,y)=>{const cx=Math.floor(x/CELL),cy=Math.floor(y/CELL);let best=1e12,bi=0;for(let ix=-1;ix<=1;ix++)for(let iy=-1;iy<=1;iy++){const a=sg.get(key(cx+ix,cy+iy));if(!a)continue;for(const i of a){const dx=xs[i]-x,dy=ys[i]-y,d=dx*dx+dy*dy;if(d<best){best=d;bi=i}}}return {i:bi,d:Math.sqrt(best)}};
   T.surfAt=(x,y,hint)=>{const n=hint!=null?trackNear(T,x,y,hint):gridNear(x,y);const g=T.gh?T.gh(x,y):heightAt(x,y,farDist(x,y),hseed);
     if(n.d>=w/2+SK)return g;const i0=n.i,u=((x-xs[i0])*tx[i0]+(y-ys[i0])*ty[i0])/SP;let r=ry[i0];if(u>0&&i0<N-1)r+=(ry[i0+1]-r)*Math.min(1,u);else if(u<0&&i0>0)r+=(ry[i0-1]-r)*Math.min(1,-u);if(n.d<=w/2)return r;if(T.bridge&&T.bridge[i0]&&r>4)return g;const t=(n.d-w/2)/SK;return r+(g-r)*t*t*(3-2*t)};
-  let ai=aiTime(T);if(ai<0)ai=T.medals[1]*1.15;T.ai=ai;{let lt=-1;try{lt=lineTime(T)}catch(e){}T.lineT=lt;const id=T.ideal||0;if(lt>0&&lt<ai){const g=lt-id;T.medals=[.94,.97,1,1.12,1.3].map(f=>Math.round(lt*f*10)/10);for(let k=1;k<5;k++)if(T.medals[k]<=T.medals[k-1])T.medals[k]=Math.round(T.medals[k-1]*10+1)/10}else T.medals=[.66,.69,.71,.8,.92].map(f=>Math.round(ai*f*10)/10)}
+  const fx=def.id&&FIXED_MEDALS[def.id];if(fx&&!DEV()){T.medals=fx.slice();T.ai=null;T.lineT=-1}else{let ai=aiTime(T);if(ai<0)ai=T.medals[1]*1.15;T.ai=ai;{let lt=-1;try{lt=lineTime(T)}catch(e){}T.lineT=lt;const id=T.ideal||0;if(lt>0&&lt<ai){const g=lt-id;T.medals=[.94,.97,1,1.12,1.3].map(f=>Math.round(lt*f*10)/10);for(let k=1;k<5;k++)if(T.medals[k]<=T.medals[k-1])T.medals[k]=Math.round(T.medals[k-1]*10+1)/10}else T.medals=[.66,.69,.71,.8,.92].map(f=>Math.round(ai*f*10)/10)}
+  if(fx)T.medals=fx.slice()}
   return T;
 }
 /* Best clean time: a bot follows the tightest line that stays on the road and brakes just in time. Medals are set from it. */
 const DEV=()=>{try{return /(^|#)dev\b/.test(location.hash||'')}catch(e){return false}};
+/* Story stage medal times are fixed (measured once with the bots), so they never shift and stages load faster. */
+const FIXED_MEDALS={s0:[9.3,9.6,9.9,11.1,12.9],s1:[14.5,15.0,15.5,17.3,20.1],s2:[14.5,15.0,15.4,17.3,20.1],s3:[23.3,24.0,24.7,27.7,32.2],s4:[19.9,20.6,21.2,23.8,27.6],s5:[9.5,9.8,10.1,11.3,13.1],s6:[14.0,14.5,14.9,16.7,19.4],s7:[13.7,14.2,14.6,16.4,19.0],s8:[26.2,27.1,27.9,31.3,36.3],s9:[19.9,20.6,21.2,23.8,27.6],s10:[8.8,9.1,9.4,10.5,12.2],s11:[14.4,14.9,15.4,17.2,20.0],s12:[13.8,14.3,14.7,16.5,19.1],s13:[24.3,25.1,25.9,29.0,33.6],s14:[24.4,25.1,25.9,29.0,33.7],s15:[8.9,9.1,9.4,10.6,12.3],s16:[15.1,15.6,16.0,18.0,20.9],s17:[14.0,14.4,14.9,16.7,19.3],s18:[25.1,25.9,26.7,30.0,34.8],s19:[24.0,24.8,25.5,28.6,33.2],s20:[9.5,9.8,10.1,11.3,13.1],s21:[15.2,15.7,16.2,18.1,21.0],s22:[14.7,15.2,15.7,17.6,20.4],s23:[24.1,24.9,25.6,28.7,33.3],s24:[21.8,22.4,23.1,25.9,30.1],s25:[9.3,9.6,9.9,11.1,12.9],s26:[15.0,15.5,15.9,17.9,20.7],s27:[14.3,14.8,15.2,17.1,19.8],s28:[27.1,28.0,28.9,32.3,37.5],s29:[24.1,24.9,25.6,28.7,33.3],s30:[10.1,10.5,10.8,12.1,14.0],s31:[15.9,16.4,16.9,18.9,21.9],s32:[13.3,13.7,14.2,15.9,18.4],s33:[24.9,25.7,26.5,29.7,34.4],s34:[24.2,25.0,25.8,28.8,33.5]};
 function lineTime(T){const N=T.N,o=new Float32Array(N),lim=T.w/2-14;
   for(let it=0;it<600;it++)for(let i=1;i<N-1;i++){const px=(T.xs[i-1]-T.ty[i-1]*o[i-1]+T.xs[i+1]-T.ty[i+1]*o[i+1])/2,py=(T.ys[i-1]+T.tx[i-1]*o[i-1]+T.ys[i+1]+T.tx[i+1]*o[i+1])/2;o[i]=clamp((px-T.xs[i])*-T.ty[i]+(py-T.ys[i])*T.tx[i],-lim,lim)}
   const X=new Float32Array(N),Y=new Float32Array(N),rad=new Float32Array(N);for(let i=0;i<N;i++){X[i]=T.xs[i]-T.ty[i]*o[i];Y[i]=T.ys[i]+T.tx[i]*o[i]}
@@ -1007,14 +1010,14 @@ function newCar(T,slot){let i=3,x=T.xs[3],y=T.ys[3];if(slot!=null){const row=Mat
   return {z:T.surfAt(x,y,i),vz:0,air:false,x,y,a:T.ang[i],vx:0,vy:0,av:0,idx:i,vf:0,vr:0,surf:0,pw:null,h:0,mk:0}}
 function stepCar(c,inp,dt,T){
   const pIdx=c.idx;const nr=trackNear(T,c.x,c.y,c.idx);if(nr.d<T.w/2+60&&!(T.bridge&&Math.abs(nr.i-c.idx)>6&&Math.abs(T.ry[nr.i]-(c.z||0))>9))c.idx=nr.i;if(nr.d>T.w/2&&onFill(T,c.x,c.y,nr.i))nr.d=0;
-  if(!c.ai){const onRoad=nr.d<T.w/2+18,sp1=Math.hypot(c.vx,c.vy)*dt/SP*1.15;
+  if(!c.ai){const onRoad=nr.d<T.w/2+30,sp1=Math.hypot(c.vx,c.vy)*dt/SP*1.15;
     if(!onRoad||c.cut){if(c.offI==null){c.offI=pIdx;c.offD=0}c.offD+=sp1;const lim=c.offI+Math.ceil(c.offD*1.1)+9;
       if(c.idx>lim){if(onRoad&&!c.cut){c.cut=1;if(!c.bot)beep(200,.2)}c.idx=lim;const n2=trackNear(T,c.x,c.y,c.idx);nr.d=n2.d;nr.i=n2.i}
       else if(onRoad){c.offI=null;c.cut=0}}
     else c.offI=null}
   c.offd=nr.d;
   if(!c.ai&&T.jumpLips&&c.idx>pIdx&&!c.air&&nr.d<T.w/2)for(const L of T.jumpLips)if(pIdx<L&&c.idx>=L){const sp0=Math.hypot(c.vx,c.vy);if(sp0>90){const k=1+32/sp0;c.vx*=k;c.vy*=k}}
-  const half=T.w/2;c.surf=nr.d<half?0:nr.d<half+16?1:2;const sf=SURF[c.surf];
+  const half=T.w/2;c.surf=nr.d<half+30?0:2;const sf=SURF[c.surf];
   const fx=Math.cos(c.a),fy=Math.sin(c.a);
   let vf=c.vx*fx+c.vy*fy,vr=-c.vx*fy+c.vy*fx;const max=MAXV*sf.max;
   if(c.air){c.vf=vf;c.vr=vr;c.av*=.995;c.a+=c.av*dt}else{
@@ -1107,7 +1110,7 @@ function tick(dt){
     if(++R.recTick>=4){R.recTick=0;R.rec.push(Math.round(c.x),Math.round(c.y),Math.round(c.a*100),Math.round((c.z||0)*10))}
     while(R.maxIdx<c.idx){R.maxIdx++;R.prog[R.maxIdx]=Math.round(R.t*100);
       if(R.maxIdx%60===0&&R.ghost&&R.ghost.p&&R.ghost.p[R.maxIdx]!=null){R.delta=R.t-R.ghost.p[R.maxIdx]/100;R.deltaT=2.4}}
-    if(c.offd>R.T.w/2+22||c.cut){R.off+=dt;if(R.off>=5){resetToTrack();if(R.kind!=='mp'){R.t+=5;R.pen+=5};R.off=0;R.penT=2.2;beep(220,.25)}}else R.off=0;
+    if(c.offd>R.T.w/2+34||c.cut){R.off+=dt;if(R.off>=5){resetToTrack();if(R.kind!=='mp'){R.t+=5;R.pen+=5};R.off=0;R.penT=2.2;beep(220,.25)}}else R.off=0;
     if(c.idx>=R.T.N-7)finishRace();
   }
   effects(c);
