@@ -191,7 +191,7 @@ const FD_LEN={s:[20,'Short · ~0.5 km'],m:[40,'Medium · ~1 km'],l:[70,'Long · 
 const FD={len:'m',biome:'random',br:'0',lp:'0'};
 function freeDef(){const keys=Object.keys(BIOMES);const b=FD.biome==='random'?keys[Math.floor(Math.random()*keys.length)]:FD.biome;const seed=Math.floor(Math.random()*1e9);
   let d=null;for(let t=0;t<8;t++){const sd=seed+t*7919;d=genTrack(sd,{n:FD_LEN[FD.len][0],turn:.5,step:220,w:94,biome:b,name:'Free Drive',cross:FD.br==='1'});
-    if(FD.lp!=='1')break;if(d.pts.length>6){const lp=addLoopPts(d.pts,d.w,rng(sd+3));if(lp){d.pts=lp;break}}}
+    if(FD.lp!=='1')break;if(d.pts.length>6){const lp=addLoops(d.pts,d.w,rng(sd+3));if(lp){d.pts=lp;break}}}
   d.id='free';return d}
 function startFree(){const d=freeDef();startRace({def:d,kind:'free',title:'Free Drive · '+BIOMES[d.biome].name+' · '+FD_LEN[FD.len][1].split(' ·')[0],back:'free'})}
 const DAILY_MODS=[{n:'Standard Stage',d:'Classic gravel road.',g:1,w:92,len:1},{n:'Slippery Road',d:'Icy patches mean less grip.',g:.72,w:96,len:1},{n:'Narrow Trail',d:'A tight road that needs a clean line.',g:1,w:74,len:1},{n:'Marathon Stage',d:'One and a half times longer.',g:1,w:90,len:1.5}];
@@ -204,12 +204,15 @@ function dailyInfo(){
   dailyCache={ds,def,mod,T:null};return dailyCache;
 }
 function mpRandomDef(seed,len,op){op=op||{};const r=rng(seed);const all=['spring','forest','autumn','desert','jungle','snow','alpine'];let pool=String(op.se||'').split(',').filter(k=>all.includes(k));if(!pool.length)pool=all;const biome=pool[Math.floor(r()*pool.length)];
-  const d=genTrack(seed,{n:len||(30+Math.floor(r()*12)),turn:.45+r()*.25,step:220,w:94,biome,name:'Hidden Stage',cross:op.br==1});if(op.lp==1&&d.pts.length>6){const lp=addLoopPts(d.pts,d.w,r);if(lp)d.pts=lp}d.id='mp-'+seed+(op.br==1?'b':'')+(op.lp==1?'l':'');return d}
+  const d=genTrack(seed,{n:len||(30+Math.floor(r()*12)),turn:.45+r()*.25,step:220,w:94,biome,name:'Hidden Stage',cross:op.br==1});if(op.lp==1&&d.pts.length>6){const lp=addLoops(d.pts,d.w,r);if(lp)d.pts=lp}d.id='mp-'+seed+(op.br==1?'b':'')+(op.lp==1?'l':'');return d}
+/* Several loops on one stage: how many depends on the length; each gets its own stretch of the road. */
+function addLoops(pts,w,r){const n=pts.length<30?1:pts.length<45?(r()<.5?1:2):(r()<.4?2:3);const cuts=[];for(let k=0;k<n;k++)cuts.push([.12+k*.8/n+.03,.12+(k+1)*.8/n-.03]);
+  let out=pts,got=0;for(let k=n-1;k>=0;k--){const lp=addLoopPts(out,w,r,cuts[k][0],cuts[k][1]);if(lp){out=lp;got++}}return got?out:null}
 function loopPts(P,h,sg,Rr,laps){const fx=Math.cos(h),fy=Math.sin(h),nx=-fy*sg,ny=fx*sg,T0=[P[0]+fx*Rr*1.2,P[1]+fy*Rr*1.2],cx=T0[0]+nx*Rr,cy=T0[1]+ny*Rr,a0=Math.atan2(-ny,-nx),out=[[P[0]+fx*Rr*.6,P[1]+fy*Rr*.6],T0];
   for(let k=1;k<=laps*8;k++){const ae=a0+sg*k*Math.PI/4;out.push([cx+Math.cos(ae)*Rr,cy+Math.sin(ae)*Rr])}
   out.push([T0[0]+fx*Rr*.6,T0[1]+fy*Rr*.6]);const X=[T0[0]+fx*Rr*1.2,T0[1]+fy*Rr*1.2];out.push(X);return {out,X,cx,cy}}
-function addLoopPts(pts,w,r){const W2=w*WF,Rr=Math.max(300,W2*1.6);
-  for(let t=0;t<16;t++){const m=Math.floor(pts.length*(.3+r()*.4));if(m<3||m>pts.length-3)continue;const P=pts[m],Pp=pts[m-1],h=Math.atan2(P[1]-Pp[1],P[0]-Pp[0]);
+function addLoopPts(pts,w,r,lo,hi){lo=lo==null?.3:lo;hi=hi==null?.7:hi;const W2=w*WF,Rr=Math.max(300,W2*1.6);
+  for(let t=0;t<16;t++){const m=Math.floor(pts.length*(lo+r()*(hi-lo)));if(m<3||m>pts.length-3)continue;const P=pts[m],Pp=pts[m-1],h=Math.atan2(P[1]-Pp[1],P[0]-Pp[0]);
     for(const sg of (r()<.5?[1,-1]:[-1,1])){const lp=loopPts(P,h,sg,Rr,2),X=lp.X,dX=X[0]-P[0],dY=X[1]-P[1],rest=[];for(let k=m+1;k<pts.length;k++)rest.push([pts[k][0]+dX,pts[k][1]+dY]);
       const out=pts.slice(0,m+1).concat(lp.out,rest).map(q=>[Math.round(q[0]),Math.round(q[1])]);const sm=resample(catmull(out)),N=sm.xs.length,gap=Math.ceil(W2*3/SP);let bad=false;
       const nl=new Uint8Array(N);let runs=0;for(let i=0;i<N;i++){nl[i]=Math.hypot(sm.xs[i]-lp.cx,sm.ys[i]-lp.cy)<Rr+W2*1.15?1:0;if(nl[i]&&(!i||!nl[i-1]))runs++}if(runs!==1)continue;const r0=nl.indexOf(1);
