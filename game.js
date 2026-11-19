@@ -188,9 +188,11 @@ const SEASONS=['spring','forest','autumn','desert','jungle','snow','alpine'];
 const storyCache={};
 function storyDef(i){if(!storyCache[i]){const s=STORY[i];for(let tr=0;tr<6;tr++){storyCache[i]=genTrack(1000+i*77+tr*7001,{n:s[2],turn:s[3],step:180+((i*53)%5)*18,hair:.17+((i*37)%4)*.05,w:s[4],biome:s[1],name:s[0],cross:i%5===3||i===14||i===34});if(storyCache[i].pts.length>5)break}storyCache[i].id='s'+i}return storyCache[i]}
 const FD_LEN={s:[20,'Short · ~0.5 km'],m:[40,'Medium · ~1 km'],l:[70,'Long · ~1.8 km'],x:[105,'Marathon · ~2.7 km']};
-const FD={len:'m',biome:'random'};
+const FD={len:'m',biome:'random',br:'0',lp:'0'};
 function freeDef(){const keys=Object.keys(BIOMES);const b=FD.biome==='random'?keys[Math.floor(Math.random()*keys.length)]:FD.biome;const seed=Math.floor(Math.random()*1e9);
-  const d=genTrack(seed,{n:FD_LEN[FD.len][0],turn:.5,step:220,w:94,biome:b,name:'Free Drive'});d.id='free';return d}
+  let d=null;for(let t=0;t<8;t++){const sd=seed+t*7919;d=genTrack(sd,{n:FD_LEN[FD.len][0],turn:.5,step:220,w:94,biome:b,name:'Free Drive',cross:FD.br==='1'});
+    if(FD.lp!=='1')break;if(d.pts.length>6){const lp=addLoopPts(d.pts,d.w,rng(sd+3));if(lp){d.pts=lp;break}}}
+  d.id='free';return d}
 function startFree(){const d=freeDef();startRace({def:d,kind:'free',title:'Free Drive · '+BIOMES[d.biome].name+' · '+FD_LEN[FD.len][1].split(' ·')[0],back:'free'})}
 const DAILY_MODS=[{n:'Standard Stage',d:'Classic gravel road.',g:1,w:92,len:1},{n:'Slippery Road',d:'Icy patches mean less grip.',g:.72,w:96,len:1},{n:'Narrow Trail',d:'A tight road that needs a clean line.',g:1,w:74,len:1},{n:'Marathon Stage',d:'One and a half times longer.',g:1,w:90,len:1.5}];
 let dailyCache=null;
@@ -671,7 +673,7 @@ function skirt(T,mat){
 const TILE=900;
 function instanced(geo,mat,list,fn,nocull){
   if(geo.index){const g2=geo.toNonIndexed();geo.dispose();geo=g2}geo.computeVertexNormals();
-  const mk=(sub,cx,cz)=>{const m=new THREE.InstancedMesh(geo,mat,Math.max(1,sub.length));sub.forEach((o,i)=>{fn(o,dummy);dummy.position.x-=cx;dummy.position.z-=cz;dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);if(o.col2){tmpC.set(o.col2);m.setColorAt(i,tmpC)}});m.count=sub.length;m.position.set(cx,0,cz);m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true;return m};
+  const mk=(sub,cx,cz)=>{const m=new THREE.InstancedMesh(geo,mat,Math.max(1,sub.length));sub.forEach((o,i)=>{fn(o,dummy);dummy.position.x-=cx;dummy.position.z-=cz;dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);if(o.col2){tmpC.set(o.col2);m.setColorAt(i,tmpC)}});m.count=sub.length;m.position.set(cx,0,cz);if(!nocull)m.userData.tc=[cx,cz];m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true;return m};
   if(nocull){const m=mk(list,0,0);m.frustumCulled=false;return m}
   geo.boundingSphere=new THREE.Sphere(new THREE.Vector3(0,0,0),TILE*.75+260);
   const tiles=new Map();for(const o of list){const k=Math.floor(o.x/TILE)+','+Math.floor(o.y/TILE);let a=tiles.get(k);if(!a)tiles.set(k,a=[]);a.push(o)}
@@ -1033,7 +1035,8 @@ function stepCar(c,inp,dt,T){
   c.vx=fx*vf-fy*vr;c.vy=fy*vf+fx*vr;c.vf=vf;c.vr=vr}
   c.x+=c.vx*dt;c.y+=c.vy*dt;
   if(T.bridge&&T.bridge[c.idx]&&T.ry[c.idx]>1.5){const i=c.idx,nx=-T.ty[i],ny=T.tx[i],l=(c.x-T.xs[i])*nx+(c.y-T.ys[i])*ny,sg=l<0?-1:1;const hs=sideHalf(T,i,T.w/2),half=sg<0?hs[0]:hs[1];
-    const bounce=(out)=>{const vn=c.vx*nx+c.vy*ny;if(vn*sg*out>0){c.vx-=1.5*vn*nx;c.vy-=1.5*vn*ny;c.vx*=.88;c.vy*=.88;c.av*=.5;if(!c.ai&&Math.abs(vn)>80)beep(90,.06)}};
+    const bounce=(out)=>{const vn=c.vx*nx+c.vy*ny;if(vn*sg*out>0){const sp=Math.hypot(c.vx,c.vy)||1,fr=1-.22*Math.min(1,Math.abs(vn)/sp);c.vx-=1.3*vn*nx;c.vy-=1.3*vn*ny;c.vx*=fr;c.vy*=fr;
+      const ta=Math.atan2(c.vy,c.vx);if(Math.hypot(c.vx,c.vy)>30&&Math.cos(c.a-ta)>0)c.a+=angD(ta,c.a)*.3;c.av*=.5;if(!c.ai&&Math.abs(vn)>80)beep(90,.06)}};
     const innerTight=(T.tdir[i]>0?sg>0:sg<0)&&T.rad[i]<T.w*.9&&onFill(T,c.x,c.y,i);
     if((c.z||0)>T.ry[i]*.5){const lim=half-14;if(!innerTight&&Math.abs(l)>lim){const d=l-sg*lim;c.x-=nx*d;c.y-=ny*d;bounce(1)}}
     else if(!innerTight){const lim=half+8;if(Math.abs(l)<lim){const d=sg*lim-l;c.x+=nx*d;c.y+=ny*d;bounce(-1)}}}
@@ -1204,8 +1207,12 @@ function camFollow(dt,rx,ry,ra,c,T,view){const sp=Math.min(1,Math.abs(c.vf)/MAXV
   if(!W.cPos)W.cPos={x:dx,y:dy,z:dz};else{const k=1-Math.exp(-dt*12);W.cPos.x+=(dx-W.cPos.x)*k;W.cPos.y+=(dy-W.cPos.y)*k;W.cPos.z+=(dz-W.cPos.z)*k}
   cam3.position.set(W.cPos.x,W.cPos.z,W.cPos.y);cam3.lookAt(rx+fx*p.la*MU,base+p.lu*MU+4,ry+fy*p.la*MU);camEaseFov(dt,p.fov+(p.ff-p.fov)*sp,1.5);W.camH=base}
 let lastMouse=0,curHidden=false;addEventListener('mousemove',()=>{lastMouse=performance.now();if(curHidden){curHidden=false;document.body.classList.remove('nocur')}},{passive:true});
+/* Draw distance: trees, rocks, fences and shadows far beyond view are not drawn at all (the fog hides that edge). */
+function cullFar(){if(!W||!W.scene)return;if(!W.tileList){W.tileList=[];W.scene.traverse(o=>{if(o.userData&&o.userData.tc)W.tileList.push(o)})}
+  const VD={l:2300,m:3300,h:4400}[S.opt.gfx]||3300;if(W.scene.fog&&W.vdSet!==VD){W.vdSet=VD;W.scene.fog.far=Math.min(4200,VD);W.scene.fog.near=Math.min(900,VD*.3)}
+  const px=cam3.position.x,pz=cam3.position.z,lim=VD+TILE*.75;let n=0;for(const o of W.tileList){const v=Math.hypot(o.userData.tc[0]-px,o.userData.tc[1]-pz)<lim;o.visible=v;if(v)n++}W.tilesShown=n}
 function drawRace(dt){
-  const T=R.T,c=R.car;{const h=R.state==='run'&&!R.paused&&Math.abs(c.vf||0)>12&&performance.now()-lastMouse>2000;if(h!==curHidden){curHidden=h;document.body.classList.toggle('nocur',h)}}cam3.clearViewOffset();
+  const T=R.T,c=R.car;if((W.cullT=(W.cullT||0)+1)%6===1)cullFar();{const h=R.state==='run'&&!R.paused&&Math.abs(c.vf||0)>12&&performance.now()-lastMouse>2000;if(h!==curHidden){curHidden=h;document.body.classList.toggle('nocur',h)}}cam3.clearViewOffset();
   if(R.deltaT>0)R.deltaT-=dt;
   const frozen=R.paused&&R.kind!=='mp';const al=(frozen||c.px==null)?1:clamp(acc/STEP,0,1);
   const rx=c.px==null?c.x:c.px+(c.x-c.px)*al,ry=c.py==null?c.y:c.py+(c.y-c.py)*al,ra=c.pa==null?c.a:c.pa+angD(c.a,c.pa)*al;
@@ -1618,6 +1625,8 @@ const SCREENS={
       <div class="card tilt"><p class="muted">A brand new random stage every time. No coins, no pressure: just drive.</p>
         <h3>Length</h3>${seg('len',Object.entries(FD_LEN).map(([k,v])=>[k,v[1]]),FD.len)}
         <h3>Season</h3>${seg('biome',[['random','Random']].concat(Object.entries(BIOMES).map(([k,b])=>[k,b.name])),FD.biome)}
+        <h3>Bridges</h3>${seg('br',[['0','Off'],['1','On']],FD.br)}
+        <h3>Loops</h3>${seg('lp',[['0','Off'],['1','On']],FD.lp)}
         <div class="row"><button class="btn pri" data-act="free-go">Drive</button></div></div></div></div>`},
   settings(){
     const seg=(k,opts,cur)=>`<div class="seg">${opts.map(([v,n])=>`<button class="${cur===v?'on':''}" data-act="opt" data-k="${k}" data-v="${v}">${n}</button>`).join('')}</div>`;
